@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Material List Manager</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial,sans-serif;
+}
+
+body{
+    background:#f5f5f5;
+    padding:20px;
+}
+
+.container{
+    max-width:900px;
+    margin:auto;
+    background:#fff;
+    padding:20px;
+    border-radius:15px;
+    box-shadow:0 5px 20px rgba(0,0,0,0.1);
+}
+
+h1{
+    text-align:center;
+    margin-bottom:20px;
+}
+
+.form{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:20px;
+}
+
+.form input{
+    flex:1;
+    padding:12px;
+    border:1px solid #ddd;
+    border-radius:10px;
+    min-width:180px;
+}
+
+button{
+    border:none;
+    padding:12px 18px;
+    border-radius:10px;
+    cursor:pointer;
+    color:#fff;
+    font-weight:bold;
+}
+
+.add-btn{
+    background:#28a745;
+}
+
+.pdf-btn{
+    background:#dc3545;
+}
+
+.print-btn{
+    background:#007bff;
+}
+
+.clear-btn{
+    background:#6c757d;
+}
+
+.save-btn{
+    background:#ff9800;
+}
+
+.table-wrapper{
+    overflow-x:auto;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+table th,
+table td{
+    border:1px solid #ddd;
+    padding:12px;
+    text-align:center;
+}
+
+table th{
+    background:#222;
+    color:#fff;
+}
+
+.action-btn{
+    padding:7px 10px;
+    margin:2px;
+    border-radius:6px;
+    color:#fff;
+    border:none;
+}
+
+.edit{
+    background:orange;
+}
+
+.delete{
+    background:red;
+}
+
+@media(max-width:600px){
+    .form{
+        flex-direction:column;
+    }
+
+    button{
+        width:100%;
+    }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<h1>Material List Manager</h1>
+
+<div class="form">
+    <input type="text" id="itemName" placeholder="Enter Item Name">
+    <input type="number" id="itemQty" placeholder="Quantity">
+
+    <button class="add-btn" onclick="addItem()">
+        <i class="fa fa-plus"></i> Add
+    </button>
+
+    <button class="save-btn" onclick="saveData()">
+        <i class="fa fa-save"></i> Save
+    </button>
+
+    <button class="pdf-btn" onclick="downloadPDF()">
+        <i class="fa fa-file-pdf"></i> PDF
+    </button>
+
+    <button class="print-btn" onclick="window.print()">
+        <i class="fa fa-print"></i> Print
+    </button>
+
+    <button class="clear-btn" onclick="clearAll()">
+        <i class="fa fa-trash"></i> Clear
+    </button>
+</div>
+
+<div class="table-wrapper">
+<table>
+    <thead>
+        <tr>
+            <th>No</th>
+            <th>Item Name</th>
+            <th>Quantity</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+
+    <tbody id="tableBody"></tbody>
+</table>
+</div>
+
+</div>
+
+<script>
+
+let items = JSON.parse(localStorage.getItem("materialItems")) || [];
+
+renderTable();
+
+function renderTable(){
+
+    let tableBody = document.getElementById("tableBody");
+    tableBody.innerHTML = "";
+
+    items.forEach((item,index)=>{
+
+        tableBody.innerHTML += `
+        <tr>
+            <td>${index+1}</td>
+            <td>${item.name}</td>
+            <td>${item.qty}</td>
+
+            <td>
+                <button class="action-btn edit" onclick="editItem(${index})">
+                    Edit
+                </button>
+
+                <button class="action-btn delete" onclick="deleteItem(${index})">
+                    Delete
+                </button>
+            </td>
+        </tr>
+        `;
+
+    });
+
+}
+
+function addItem(){
+
+    let itemName = document.getElementById("itemName").value.trim();
+    let itemQty = document.getElementById("itemQty").value.trim();
+
+    if(itemName === "" || itemQty === ""){
+        alert("Please enter all fields");
+        return;
+    }
+
+    items.push({
+        name:itemName,
+        qty:itemQty
+    });
+
+    document.getElementById("itemName").value = "";
+    document.getElementById("itemQty").value = "";
+
+    saveData();
+    renderTable();
+
+}
+
+function deleteItem(index){
+
+    if(confirm("Delete this item?")){
+        items.splice(index,1);
+        saveData();
+        renderTable();
+    }
+
+}
+
+function editItem(index){
+
+    let newName = prompt("Edit Item Name",items[index].name);
+    let newQty = prompt("Edit Quantity",items[index].qty);
+
+    if(newName && newQty){
+
+        items[index].name = newName;
+        items[index].qty = newQty;
+
+        saveData();
+        renderTable();
+
+    }
+
+}
+
+function saveData(){
+    localStorage.setItem("materialItems", JSON.stringify(items));
+}
+
+function clearAll(){
+
+    if(confirm("Clear all items?")){
+        items = [];
+        saveData();
+        renderTable();
+    }
+
+}
+
+async function downloadPDF(){
+
+    if(items.length === 0){
+        alert("No items found");
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+
+    let doc = new jsPDF();
+
+    doc.setFontSize(18);
+    doc.text("Material List",20,20);
+
+    let y = 40;
+
+    items.forEach((item,index)=>{
+
+        doc.text(
+            `${index+1}. ${item.name} = ${item.qty}`,
+            20,
+            y
+        );
+
+        y += 10;
+
+    });
+
+    doc.save("material-list.pdf");
+
+}
+
+</script>
+
+</body>
+</html>
